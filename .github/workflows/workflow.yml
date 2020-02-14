@@ -1,0 +1,87 @@
+name: Multijob workflow to build and deploy Docker app to Azure
+
+on: push
+
+# CONFIGURATION
+# For help, go to https://github.com/Azure/Actions
+#
+# Set up the following secrets in your repository:
+#   AZURE_CREDENTIALS, REGISTRY_USERNAME, REGISTRY_PASSWORD, AZURE_DEVOPS_TOKEN
+# 2. Change these variables for your configuration:
+env:
+  AZURE_RESOURCE_GROUP: ActionsDemo   # set this to your Azure Resource group's name  
+  AZURE_WEBAPP_NAME: AppWithContainer   # set this to your application's name
+  AZURE_APP_PLAN: ActionPlan  # set this to your App service plan's name
+  CONTAINER_REGISTRY: actionregistry.azurecr.io   # set this to Container Registry name
+  CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+jobs:
+#   provision-webapp:
+#     runs-on: ubuntu-latest
+#     steps:
+#     # Provision a new Web App
+#     - name: Azure authentication
+#       uses: azure/login@v1
+#       with:
+#         creds: ${{ secrets.AZURE_CREDENTIALS  }}
+#     - name: Azure CLI script to create a new Web App for Container
+#       uses: azure/CLI@v0-beta
+#       with:
+#         azcliversion: latest
+#         inlineScript: |
+#           az account show
+#           az webapp create --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --plan ${{ env.AZURE_APP_PLAN }} --name ${{ env.AZURE_WEBAPP_NAME }}  -i nginx
+  
+  build-and-deploy-to-dev:
+    #needs: provision-webapp
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    
+#     - name: Azure authentication
+#       uses: azure/login@v1
+#       with:
+#         creds: ${{ secrets.AZURE_CREDENTIALS  }}
+
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ env.CREDENTIALS }}
+        
+    - name: ACR authentication
+      uses: azure/docker-login@v1
+      with:
+        login-server: ${{ env.CONTAINER_REGISTRY }}
+        username: ${{ secrets.REGISTRY_USERNAME }}
+        password: ${{ secrets.REGISTRY_PASSWORD }}    
+    - name: Docker Build & Push to ACR
+      run: |
+        docker build . -t ${{ env.CONTAINER_REGISTRY }}/nodejsapp:${{ github.sha }}
+        docker push ${{ env.CONTAINER_REGISTRY }}/nodejsapp:${{ github.sha }}    
+         
+    - name: 'Deploy to Azure Web App for Container'   
+      uses: azure/webapps-deploy@releases/v2
+      with: 
+        app-name: ${{ env.AZURE_WEBAPP_NAME }} 
+        images: ${{ env.CONTAINER_REGISTRY }}/nodejsapp:${{ github.sha }}
+    
+#   deploy-to-Prod:
+#     needs: build-and-deploy-to-dev
+#     runs-on: ubuntu-latest
+#     steps:
+#     - name: 'Trigger an Azure Pipeline to deploy the app to PRODUCTION'
+#       uses: Azure/pipelines@releases/v1
+#       with:
+#         azure-devops-project-url: 'https://dev.azure.com/mseng/AzureDevOps'
+#         azure-pipeline-name: 'NodeApp_Azure_Prod' 
+#         azure-devops-token: '${{ secrets.AZURE_DEVOPS_TOKEN }}'
+    
+#     # Delete the Web App provisioned for Development
+#     - uses: azure/login@v1
+#       with:
+#         creds: ${{ secrets.AZURE_CREDENTIALS }}
+#     - name: Azure CLI script to create a new Web App for Container
+#       uses: azure/CLI@v0-beta
+#       with:
+#         azcliversion: latest
+#         inlineScript: |
+#           az webapp delete --resource-group ActionsDemo --name AppWithContainerDev
