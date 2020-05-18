@@ -14,23 +14,23 @@ env:
   AZURE_APP_PLAN: ActionPlan  # set this to your App service plan's name - Needed only if you are provisioning the app in the workflow
   CONTAINER_REGISTRY: ${{ secrets.REGISTRY_USERNAME }}.azurecr.io   # set secret with Container Registry name
 jobs:
-#   provision-webapp:
-#     runs-on: ubuntu-latest
-#     steps:
-#     # Provision a new Web App
-#     - name: Azure authentication
-#       uses: azure/login@v1
-#       with:
-#         creds: ${{ secrets.AZURE_CREDENTIALS  }}
-#     - name: Azure CLI script to create a new Web App for Container
-#       uses: azure/CLI@v0-beta
-#       with:
-#         azcliversion: latest
-#         inlineScript: |
-#           az webapp create --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --plan ${{ env.AZURE_APP_PLAN }} --name ${{ env.AZURE_WEBAPP_NAME }}  -i nginx
+  provision-webapp:
+    runs-on: ubuntu-latest
+    steps:
+    # Provision a new Web App
+    - name: Azure authentication
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS  }}
+    - name: Azure CLI script to create a new Web App for Container
+      uses: azure/CLI@v0-beta
+      with:
+        azcliversion: latest
+        inlineScript: |
+          az webapp create --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --plan ${{ env.AZURE_APP_PLAN }} --name ${{ env.AZURE_WEBAPP_NAME }}  -i nginx
   
   build-and-deploy-to-dev:
-    #needs: provision-webapp
+    needs: provision-webapp
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
